@@ -2,20 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
+import { supabase } from "@/lib/supabase";
 import "leaflet/dist/leaflet.css";
 
 type Point = [number, number];
+
+const DELIVERY_ID = "00000000-0000-0000-0000-000000000001";
 
 const startPoint: Point = [43.8256, 87.6168];
 const finishPoint: Point = [55.7558, 37.6173];
 
 function getPositionByProgress(points: Point[], progress: number): Point {
-  if (points.length === 0) return startPoint;
-  if (points.length === 1) return points[0];
+  if (points.length < 2) return startPoint;
 
-  const safeProgress = Math.max(0, Math.min(1, progress));
   const totalSegments = points.length - 1;
-  const rawIndex = safeProgress * totalSegments;
+  const rawIndex = progress * totalSegments;
 
   const segmentIndex = Math.min(Math.floor(rawIndex), totalSegments - 1);
   const segmentProgress = rawIndex - segmentIndex;
@@ -30,51 +31,50 @@ function getPositionByProgress(points: Point[], progress: number): Point {
 }
 
 export default function DeliveryMap() {
-  const [roadRoute, setRoadRoute] = useState<Point[]>([]);
+  const [route, setRoute] = useState<Point[]>([]);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    async function loadRoute() {
-      const [startLat, startLng] = startPoint;
-      const [finishLat, finishLng] = finishPoint;
-
-      const url =
-        `https://router.project-osrm.org/route/v1/driving/` +
-        `${startLng},${startLat};${finishLng},${finishLat}` +
-        `?overview=full&geometries=geojson`;
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      const coordinates = data.routes[0].geometry.coordinates;
-
-      const route: Point[] = coordinates.map(
-        ([lng, lat]: [number, number]) => [lat, lng]
-      );
-
-      setRoadRoute(route);
-    }
-
     loadRoute();
+    loadProgress();
+
+    const interval = setInterval(loadProgress, 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (roadRoute.length === 0) return;
+  async function loadRoute() {
+    const url =
+      `https://router.project-osrm.org/route/v1/driving/` +
+      `${startPoint[1]},${startPoint[0]};${finishPoint[1]},${finishPoint[0]}` +
+      `?overview=full&geometries=geojson`;
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + 0.001;
-        if (next >= 1) return 1;
-        return next;
-      });
-    }, 50);
+    const res = await fetch(url);
+    const data = await res.json();
 
-    return () => clearInterval(interval);
-  }, [roadRoute]);
+    const coords = data.routes[0].geometry.coordinates;
+
+    const points: Point[] = coords.map(
+      ([lng, lat]: [number, number]) => [lat, lng]
+    );
+
+    setRoute(points);
+  }
+
+  async function loadProgress() {
+    const { data } = await supabase
+      .from("deliveries")
+      .select("progress")
+      .eq("id", DELIVERY_ID)
+      .single();
+
+    if (data) {
+      setProgress(data.progress);
+    }
+  }
 
   const carPosition =
-    roadRoute.length > 0
-      ? getPositionByProgress(roadRoute, progress)
+    route.length > 0
+      ? getPositionByProgress(route, progress)
       : startPoint;
 
   return (
@@ -89,7 +89,7 @@ export default function DeliveryMap() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {roadRoute.length > 0 && <Polyline positions={roadRoute} />}
+        {route.length > 0 && <Polyline positions={route} />}
 
         <Marker position={carPosition} />
       </MapContainer>

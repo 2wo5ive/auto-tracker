@@ -1,8 +1,11 @@
+import MapWrapper from "../components/MapWrapper";
+
 export default function Home() {
   return (
-    <main style={{ padding: '40px', fontFamily: 'sans-serif' }}>
-      <h1>Трекер авто</h1>
-      <p>Скоро здесь будет карта</p>
+    <main style={{ padding: "30px", fontFamily: "Arial" }}>
+      <h1>Трекер доставки автомобиля</h1>
+
+      <MapWrapper />
     </main>
-  )
+  );
 }

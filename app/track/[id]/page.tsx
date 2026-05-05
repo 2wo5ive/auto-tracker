@@ -15,14 +15,18 @@ export default async function TrackPage() {
   return (
     <main style={{ padding: "30px", fontFamily: "Arial" }}>
       <h1>Трекер доставки</h1>
+
       {car && (
         <div style={{ marginBottom: 20 }}>
-          <h2>{car.brand} {car.model}</h2>
+          <h2>
+            {car.brand} {car.model}
+          </h2>
           <p>Год: {car.year}</p>
           <p>VIN: {car.vin}</p>
           <p>Цвет: {car.color}</p>
         </div>
       )}
+
       <MapWrapper />
     </main>
   );

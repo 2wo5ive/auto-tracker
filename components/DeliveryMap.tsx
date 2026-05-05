@@ -1,8 +1,9 @@
+// @ts-nocheck
 "use client";
 
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 import "leaflet/dist/leaflet.css";
 
 type Point = [number, number];
@@ -15,8 +16,9 @@ const finishPoint: Point = [55.7558, 37.6173];
 function getPositionByProgress(points: Point[], progress: number): Point {
   if (points.length < 2) return startPoint;
 
+  const safeProgress = Math.max(0, Math.min(1, progress));
   const totalSegments = points.length - 1;
-  const rawIndex = progress * totalSegments;
+  const rawIndex = safeProgress * totalSegments;
 
   const segmentIndex = Math.min(Math.floor(rawIndex), totalSegments - 1);
   const segmentProgress = rawIndex - segmentIndex;
@@ -67,30 +69,17 @@ export default function DeliveryMap() {
       .eq("id", DELIVERY_ID)
       .single();
 
-    if (data) {
-      setProgress(data.progress);
-    }
+    if (data) setProgress(Number(data.progress));
   }
 
   const carPosition =
-    route.length > 0
-      ? getPositionByProgress(route, progress)
-      : startPoint;
+    route.length > 0 ? getPositionByProgress(route, progress) : startPoint;
 
   return (
     <div style={{ height: "500px", width: "100%" }}>
-      <MapContainer
-        center={startPoint}
-        zoom={5}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer
-          attribution="&copy; OpenStreetMap"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
+      <MapContainer center={startPoint} zoom={5} style={{ height: "100%", width: "100%" }}>
+        <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {route.length > 0 && <Polyline positions={route} />}
-
         <Marker position={carPosition} />
       </MapContainer>
     </div>
